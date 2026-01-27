@@ -5,12 +5,14 @@ import google.generativeai as genai
 import os
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
-import time
 
 load_dotenv()
 
 # Configurer l'API Google
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+api_key = os.getenv("GOOGLE_API_KEY")
+if not api_key:
+    raise ValueError("GOOGLE_API_KEY environment variable is not set!")
+genai.configure(api_key=api_key)
 model = genai.GenerativeModel("gemini-2.0-flash")
 
 # Cache simple pour éviter trop d'appels API
@@ -26,13 +28,25 @@ responses_fallback = {
 
 app = FastAPI()
 
-# Autoriser le frontend Vite
+FRONTEND_URL = os.getenv(
+    "FRONTEND_URL",
+    "https://african-recipe-lk5m5y2jh-safieta67-1435s-projects.vercel.app"
+)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:3000",
+        FRONTEND_URL,
+    ],
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.get("/")
+def root():
+    return {"message": "SavouraBot Backend is running! 🍛", "status": "ok"}
 
 class ChatRequest(BaseModel):
     message: str
