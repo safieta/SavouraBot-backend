@@ -28,21 +28,18 @@ responses_fallback = {
 
 app = FastAPI()
 
-FRONTEND_URL = os.getenv(
-    "FRONTEND_URL",
-    "https://african-recipe-lk5m5y2jh-safieta67-1435s-projects.vercel.app"
-)
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
         "http://localhost:3000",
-        FRONTEND_URL,
+        "https://african-recipe-ai.vercel.app",
     ],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 @app.get("/")
 def root():
