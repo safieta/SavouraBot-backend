@@ -28,13 +28,20 @@ responses_fallback = {
 
 app = FastAPI()
 
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=[
+#         "http://localhost:5173",
+#         "http://localhost:3000",
+#         "https://african-recipe-ai.vercel.app",
+#     ],
+#     allow_credentials=False,
+#     allow_methods=["*"],
+#     allow_headers=["*"],
+# )
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://localhost:3000",
-        "https://african-recipe-ai.vercel.app",
-    ],
+    allow_origins=["*"],  # ✅ autorise Vercel, preview, prod
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
