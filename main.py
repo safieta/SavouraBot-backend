@@ -20,11 +20,14 @@ cache = {}
 cache_ttl = timedelta(hours=1)
 
 # Réponses pré-générées pour fonctionner sans quota
-# responses_fallback = {
-#     "recette": "Voici une délicieuse recette de poulet yassa sénégalais : Faites mariner le poulet dans du jus de citron, des oignons tranchés et de l'huile d'arachide pendant 2h. Faites dorer le poulet, puis ajoutez la marinade et laissez mijoter 45 minutes. Servez avec du riz blanc. 🍛",
-#     "bonjour": "Bonjour ! Je suis SavouraBot, votre assistant pour les recettes africaines. Comment puis-je vous aider ? Vous pouvez me demander une recette, des conseils culinaires ou en savoir plus sur les ingrédients africains. 🍛",
-#     "jollof": "Le Jollof Rice est un plat populaire en Afrique de l'Ouest. Faites revenir les oignons, ajoutez la tomate, le bouillon, le riz, et les épices. Laissez cuire 30 minutes à feu moyen. C'est délicieux ! 🍛",
-# }
+responses_fallback = {
+    "recette": "Voici une délicieuse recette de poulet yassa sénégalais : Faites mariner le poulet dans du jus de citron, des oignons tranchés et de l'huile d'arachide pendant 2h. Faites dorer le poulet, puis ajoutez la marinade et laissez mijoter 45 minutes. Servez avec du riz blanc. 🍛",
+    "bonjour": "Bonjour ! Je suis SavouraBot, votre assistant pour les recettes africaines. Comment puis-je vous aider ? Vous pouvez me demander une recette, des conseils culinaires ou en savoir plus sur les ingrédients africains. 🍛",
+    "jollof": "Le Jollof Rice est un plat populaire en Afrique de l'Ouest. Faites revenir les oignons, ajoutez la tomate, le bouillon, le riz, et les épices. Laissez cuire 30 minutes à feu moyen. C'est délicieux ! 🍛",
+    "haricot": "Voici une recette simple de haricots rouges : faites tremper les haricots, cuisez-les avec oignon, ail, tomate, sel et un peu d’huile. Servez avec du riz ou du tô.",
+    "riz": "Pour le riz simple : rincez le riz, faites-le cuire dans de l’eau salée jusqu’à absorption complète.",
+    "poulet": "Le poulet peut être préparé en sauce, braisé ou frit selon la recette souhaitée.",
+}
 
 app = FastAPI()
 
