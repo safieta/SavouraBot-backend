@@ -5,94 +5,126 @@ import google.generativeai as genai
 import os
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
+from typing import Optional
 
 load_dotenv()
 
-# Configurer l'API Google
+# =============================
+# CONFIGURATION GEMINI
+# =============================
 api_key = os.getenv("GOOGLE_API_KEY")
 if not api_key:
     raise ValueError("GOOGLE_API_KEY environment variable is not set!")
-genai.configure(api_key=api_key)
-model = genai.GenerativeModel("gemini-2.0-flash")
 
-# Cache simple pour éviter trop d'appels API
+genai.configure(api_key=api_key)
+
+model = genai.GenerativeModel("gemini-2.5-flash")
+
+# =============================
+# SYSTEM PROMPT (TON ASSISTANT)
+# =============================
+SYSTEM_PROMPT = """
+Tu es un assistant culinaire expert spécialisé dans les recettes africaines,
+en particulier celles d’Afrique de l’Ouest.
+
+Tu génères des recettes complètes, authentiques et faciles à suivre,
+avec un ton chaleureux et engageant.
+
+FORMAT OBLIGATOIRE :
+
+🍲 NOM DU PLAT
+🥘 INGRÉDIENTS (avec quantités)
+👩🏽‍🍳 ÉTAPES DE PRÉPARATION (numérotées)
+💡 CONSEILS SUPPLÉMENTAIRES
+
+RÈGLES :
+- Réponds uniquement en français
+- Utilise des emojis culinaires avec modération 🍛🥘
+- N’invente jamais d’informations
+- Si un détail manque, dis-le clairement
+- Ne sors jamais du format imposé
+"""
+
+# =============================
+# CACHE SIMPLE
+# =============================
 cache = {}
 cache_ttl = timedelta(hours=1)
 
-# Réponses pré-générées pour fonctionner sans quota
-responses_fallback = {
-    "recette": "Voici une délicieuse recette de poulet yassa sénégalais : Faites mariner le poulet dans du jus de citron, des oignons tranchés et de l'huile d'arachide pendant 2h. Faites dorer le poulet, puis ajoutez la marinade et laissez mijoter 45 minutes. Servez avec du riz blanc. 🍛",
-    "bonjour": "Bonjour ! Je suis SavouraBot, votre assistant pour les recettes africaines. Comment puis-je vous aider ? Vous pouvez me demander une recette, des conseils culinaires ou en savoir plus sur les ingrédients africains. 🍛",
-    "jollof": "Le Jollof Rice est un plat populaire en Afrique de l'Ouest. Faites revenir les oignons, ajoutez la tomate, le bouillon, le riz, et les épices. Laissez cuire 30 minutes à feu moyen. C'est délicieux ! 🍛",
-}
-
+# =============================
+# FASTAPI APP
+# =============================
 app = FastAPI()
 
-# app.add_middleware(
-#     CORSMiddleware,
-#     allow_origins=[
-#         "http://localhost:5173",
-#         "http://localhost:3000",
-#         "https://african-recipe-ai.vercel.app",
-#     ],
-#     allow_credentials=False,
-#     allow_methods=["*"],
-#     allow_headers=["*"],
-# )
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # ✅ autorise Vercel, preview, prod
+    allow_origins=["*"],
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-
 @app.get("/")
 def root():
-    return {"message": "SavouraBot Backend is running! 🍛", "status": "ok"}
+    return {
+        "message": "SavouraBot Backend is running 🍛",
+        "status": "ok"
+    }
 
+# =============================
+# SCHEMA REQUÊTE
+# =============================
 class ChatRequest(BaseModel):
-    message: str
+    message: Optional[str] = None
+    prompt: Optional[str] = None
 
+# =============================
+# ENDPOINT CHAT
+# =============================
 @app.post("/api/chat")
 def chat(req: ChatRequest):
-    try:
-        # Vérifier le cache
-        if req.message in cache:
-            cached_reply, cached_time = cache[req.message]
-            if datetime.now() - cached_time < cache_ttl:
-                return {"reply": cached_reply}
-        
-        # Utiliser Google Generative AI pour générer une réponse intelligente
-        response = model.generate_content(
-            f"Tu es SavouraBot, un assistant culinaire spécialisé dans les recettes africaines. "
-            f"Réponds en français à la question suivante de manière utile et engageante:\n\n{req.message}"
-        )
-        reply = response.text
-        
-        # Mettre en cache
-        cache[req.message] = (reply, datetime.now())
-        
-    except Exception as e:
-        error_msg = str(e)
-        # Si quota dépassé, utiliser les réponses fallback
-        if "429" in error_msg or "quota" in error_msg.lower():
-            # Chercher une réponse correspondante
-            reply = None
-            message_lower = req.message.lower()
-            for keyword, fallback_reply in responses_fallback.items():
-                if keyword in message_lower:
-                    reply = fallback_reply
-                    break
-            
-            if not reply:
-                reply = "🍛 Je suis temporairement limité par mon quota API. Essayez de demander une recette de poulet, jollof, ou saluez-moi ! Ou réessayez dans quelques minutes."
-        elif "404" in error_msg:
-            reply = "🍛 Le modèle n'est pas disponible. Veuillez vérifier votre clé API."
-        else:
-            reply = f"🍛 Désolé, une erreur s'est produite : {error_msg[:100]}"
+    user_message = req.message or req.prompt
 
-    return {
-        "reply": reply
-    }
+    if not user_message:
+        return {
+            "reply": "🍛 Veuillez fournir un message ou un prompt."
+        }
+
+    # Cache
+    if user_message in cache:
+        cached_reply, cached_time = cache[user_message]
+        if datetime.now() - cached_time < cache_ttl:
+            return {"reply": cached_reply}
+
+    try:
+        response = model.generate_content(
+            f"{SYSTEM_PROMPT}\n\nQUESTION UTILISATEUR : {user_message}"
+        )
+
+        reply = response.text.strip()
+
+        cache[user_message] = (reply, datetime.now())
+
+        return {"reply": reply}
+
+    except Exception as e:
+        error = str(e).lower()
+
+        # Gestion réaliste des erreurs
+        if "quota" in error or "429" in error:
+            reply = (
+                "🍛 Le service est temporairement indisponible (quota atteint). "
+                "Réessayez dans quelques minutes."
+            )
+        elif "api key" in error or "permission" in error:
+            reply = (
+                "🍛 Problème avec la clé API Gemini. "
+                "Vérifiez qu’elle est valide et bien liée à un projet."
+            )
+        else:
+            reply = (
+                "🍛 Une erreur interne est survenue. "
+                "Veuillez réessayer plus tard."
+            )
+
+        return {"reply": reply}
